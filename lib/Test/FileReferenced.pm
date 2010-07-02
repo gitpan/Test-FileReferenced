@@ -10,7 +10,7 @@ use 5.005003;
 use strict;
 use base qw( Exporter );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our @EXPORT = qw(
     is_referenced_ok
     is_referenced_in_file
@@ -112,12 +112,19 @@ sub is_referenced_ok { # {{{
         croak("Test name missing, but it is mandatory!");
     }
 
+    # Check if the test name is unique.
+    if ($output->{$test_name}) {
+        croak("Test name: '$test_name' is not unique.");
+    }
+
     if (not $comparator) {
         $comparator = \&is_deeply;
     }
 
+    $output->{$test_name} = $tested_data;
+
     # Check if We have a reference data for given test.
-    if (not $reference->{$test_name}) {
+    if (not exists $reference->{$test_name}) {
         diag("No reference for test '$test_name' found. Test will fail.");
 
         # Fixme: provide some more detailed information, what happened,
@@ -127,13 +134,6 @@ sub is_referenced_ok { # {{{
 
         return fail($test_name);
     }
-
-    # Check if the test name is unique.
-    if ($output->{$test_name}) {
-        croak("Test name: '$test_name' is not unique.");
-    }
-
-    $output->{$test_name} = $tested_data;
 
     my $status;
     if (not $status = $comparator->($tested_data, $reference->{$test_name}, $test_name)) {
@@ -292,7 +292,7 @@ sub _init_if_you_need { # {{{
 } # }}}
 
 sub _clean_up { # {{{
-    if (-f $default_results_filename) {
+    if ($default_results_filename and -f $default_results_filename) {
         unlink $default_results_filename;
     }
 
@@ -434,7 +434,7 @@ sub _display_failure_prompt { # {{{
         # Second major use case: reference does not exist at all.
         diag("No reference file found. It'a a good idea to create one from scratch manually.");
         diag("To inspect current results run:");
-        diag(sprintf(q{%10s %s %s}, "cat", $results_filename));
+        diag(sprintf(q{%10s %s}, "cat", $results_filename));
         diag("\n");
         diag("If You trust Your test output, You can use it to initialize deference file, by running:");
         diag(sprintf(q{%10s %s %s}, q{mv}, $results_filename, $reference_filename));
